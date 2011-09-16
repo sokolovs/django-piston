@@ -157,8 +157,11 @@ class Resource(object):
                     format_error('\n'.join(rep.format_exception())))
             else:
                 raise
+        else:
+            self.post_process(request, result)
 
         emitter, ct = Emitter.get(em_format)
+
         srl = emitter(result, typemapper, handler, handler.fields, anonymous)
 
         try:
@@ -198,7 +201,15 @@ class Resource(object):
                 setattr(request, method_type, sanitized)
 
         return request
-        
+    
+    def post_process(self, request, data):
+        """
+        Allow any derived classes to mangle the result after it has been generated.
+        This is useful when rolling your own authentication method, such as rolling tokens
+        or signing requests.
+        """
+        return data
+    
     # -- 
     
     def email_exception(self, reporter):
