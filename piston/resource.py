@@ -64,6 +64,8 @@ class Resource(object):
         NB: Sends a `Vary` header so we don't cache requests
         that are different (OAuth stuff in `Authorization` header.)
         """
+        self._request = request
+
         rm = request.method.upper()
 
         # Django's internal mechanism doesn't pick up
@@ -157,8 +159,6 @@ class Resource(object):
                     format_error('\n'.join(rep.format_exception())))
             else:
                 raise
-        else:
-            self.post_process(request, result)
 
         emitter, ct = Emitter.get(em_format)
 
@@ -171,8 +171,10 @@ class Resource(object):
             before sending it to the client. Won't matter for
             smaller datasets, but larger will have an impact.
             """
-            if self.stream: stream = srl.stream_render(request)
-            else: stream = srl.render(request)
+            if self.stream:
+            	stream = srl.stream_render(request, post_processor=self.post_process)
+            else:
+            	stream = srl.render(request, post_processor=self.post_process)
 
             resp = HttpResponse(stream, mimetype=ct)
 
@@ -202,7 +204,7 @@ class Resource(object):
 
         return request
     
-    def post_process(self, request, data):
+    def post_process(self, data):
         """
         Allow any derived classes to mangle the result after it has been generated.
         This is useful when rolling your own authentication method, such as rolling tokens

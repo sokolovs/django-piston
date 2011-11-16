@@ -73,7 +73,7 @@ class Emitter(object):
         
         return ret
     
-    def construct(self):
+    def construct(self, **kwargs):
         """
         Recursively serialize a lot of types, and
         in cases where it doesn't recognize the type,
@@ -81,6 +81,9 @@ class Emitter(object):
         
         Returns `dict`.
         """
+        
+        post_processor = kwargs.pop('post_processor', lambda result: result)
+        
         def _any(thing, fields=()):
             """
             Dispatch, all types are routed through here.
@@ -251,7 +254,7 @@ class Emitter(object):
             if hasattr(data, 'get_absolute_url') and get_absolute_uri:
                 try: ret['absolute_uri'] = data.get_absolute_url()
                 except: pass
-            
+                
             return ret
         
         def _qs(data, fields=()):
@@ -273,28 +276,28 @@ class Emitter(object):
             return dict([ (k, _any(v)) for k, v in data.iteritems() ])
             
         # Kickstart the seralizin'.
-        return _any(self.data, self.fields)
+        return post_processor(_any(self.data, self.fields))
     
     def in_typemapper(self, model, anonymous):
         for klass, (km, is_anon) in self.typemapper.iteritems():
             if model is km and is_anon is anonymous:
                 return klass
         
-    def render(self):
+    def render(self, post_processor=None):
         """
         This super emitter does not implement `render`,
         this is a job for the specific emitter below.
         """
         raise NotImplementedError("Please implement render.")
         
-    def stream_render(self, request, stream=True):
+    def stream_render(self, request, stream=True, post_processor=None):
         """
         Tells our patched middleware not to look
         at the contents, and returns a generator
         rather than the buffered string. Should be
         more memory friendly for large datasets.
         """
-        yield self.render(request)
+        yield self.render(request, post_processor=post_processor)
         
     @classmethod
     def get(cls, format):
@@ -341,14 +344,14 @@ class XMLEmitter(Emitter):
         else:
             xml.characters(smart_unicode(data))
 
-    def render(self, request):
+    def render(self, request, post_processor=None):
         stream = StringIO.StringIO()
         
         xml = SimplerXMLGenerator(stream, "utf-8")
         xml.startDocument()
         xml.startElement("response", {})
         
-        self._to_xml(xml, self.construct())
+        self._to_xml(xml, self.construct(post_processor=post_processor))
         
         xml.endElement("response")
         xml.endDocument()
@@ -362,9 +365,9 @@ class JSONEmitter(Emitter):
     """
     JSON emitter, understands timestamps.
     """
-    def render(self, request):
+    def render(self, request, post_processor=None):
         cb = request.GET.get('callback')
-        seria = simplejson.dumps(self.construct(), cls=DateTimeAwareJSONEncoder, ensure_ascii=False, indent=4)
+        seria = simplejson.dumps(self.construct(post_processor=post_processor), cls=DateTimeAwareJSONEncoder, ensure_ascii=False, indent=4)
 
         # Callback
         if cb:
@@ -380,8 +383,8 @@ class YAMLEmitter(Emitter):
     YAML emitter, uses `safe_dump` to omit the
     specific types when outputting to non-Python.
     """
-    def render(self, request):
-        return yaml.safe_dump(self.construct())
+    def render(self, request, post_processor=None):
+        return yaml.safe_dump(self.construct(post_processor=post_processor))
 
 if yaml:  # Only register yaml if it was import successfully.
     Emitter.register('yaml', YAMLEmitter, 'application/x-yaml; charset=utf-8')
@@ -391,8 +394,8 @@ class PickleEmitter(Emitter):
     """
     Emitter that returns Python pickled.
     """
-    def render(self, request):
-        return pickle.dumps(self.construct())
+    def render(self, request, post_processor=None):
+        return pickle.dumps(self.construct(post_processor=post_processor))
         
 Emitter.register('pickle', PickleEmitter, 'application/python-pickle')
 Mimer.register(pickle.loads, ('application/python-pickle',))
