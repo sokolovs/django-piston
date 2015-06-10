@@ -22,20 +22,20 @@ class Resource(object):
     is an authentication handler. If not specified,
     `NoAuthentication` will be used by default.
     """
-    callmap = { 'GET': 'read', 'POST': 'create', 
+    callmap = { 'GET': 'read', 'POST': 'create',
                 'PUT': 'update', 'DELETE': 'delete' }
-    
+
     def __init__(self, handler, authentication=None):
         if not callable(handler):
             raise AttributeError, "Handler not callable."
-        
+
         self.handler = handler()
-        
+
         if not authentication:
             self.authentication = NoAuthentication()
         else:
             self.authentication = authentication
-            
+
         # Erroring
         self.email_errors = getattr(settings, 'PISTON_EMAIL_ERRORS', True)
         self.display_errors = getattr(settings, 'PISTON_DISPLAY_ERRORS', True)
@@ -52,12 +52,12 @@ class Resource(object):
         that as well.
         """
         em = kwargs.pop('emitter_format', None)
-        
+
         if not em:
             em = request.GET.get('format', 'json')
 
         return em
-    
+
     @vary_on_headers('Authorization')
     def __call__(self, request, *args, **kwargs):
         """
@@ -85,19 +85,19 @@ class Resource(object):
         else:
             handler = self.handler
             anonymous = handler.is_anonymous
-        
+
         # Translate nested datastructs into `request.data` here.
         if rm in ('POST', 'PUT'):
             try:
                 translate_mime(request)
             except MimerDataException:
                 return rc.BAD_REQUEST
-        
+
         if not rm in handler.allowed_methods:
             return HttpResponseNotAllowed(handler.allowed_methods)
-        
+
         meth = getattr(handler, self.callmap.get(rm), None)
-        
+
         if not meth:
             raise Http404
 
@@ -105,12 +105,12 @@ class Resource(object):
         em_format = self.determine_emitter(request, *args, **kwargs)
 
         kwargs.pop('emitter_format', None)
-        
+
         # Clean up the request object a bit, since we might
         # very well have `oauth_`-headers in there, and we
         # don't want to pass these along to the handler.
         request = self.cleanup_request(request)
-        
+
         try:
             result = meth(request, *args, **kwargs)
         except FormValidationError, e:
@@ -122,15 +122,15 @@ class Resource(object):
             sig = hm.get_signature()
 
             msg = 'Method signature does not match.\n\n'
-            
+
             if sig:
                 msg += 'Signature should be: %s' % sig
             else:
                 msg += 'Resource does not expect any parameters.'
 
-            if self.display_errors:                
+            if self.display_errors:
                 msg += '\n\nException was: %s' % str(e)
-                
+
             result.content = format_error(msg)
         except HttpStatusCode, e:
             #result = e ## why is this being passed on and not just dealt with now?
@@ -140,13 +140,13 @@ class Resource(object):
             On errors (like code errors), we'd like to be able to
             give crash reports to both admins and also the calling
             user. There's two setting parameters for this:
-            
+
             Parameters::
              - `PISTON_EMAIL_ERRORS`: Will send a Django formatted
                error email to people in `settings.ADMINS`.
              - `PISTON_DISPLAY_ERRORS`: Will return a simple traceback
                to the caller, so he can tell you what error they got.
-               
+
             If `PISTON_DISPLAY_ERRORS` is not enabled, the caller will
             receive a basic "500 Internal Server Error" message.
             """
@@ -176,7 +176,7 @@ class Resource(object):
             else:
             	stream = srl.render(request, post_processor=self.post_process)
 
-            resp = HttpResponse(stream, mimetype=ct)
+            resp = HttpResponse(stream, content_type=ct)
 
             resp.streaming = self.stream
 
@@ -195,15 +195,15 @@ class Resource(object):
 
             if True in [ k.startswith("oauth_") for k in block.keys() ]:
                 sanitized = block.copy()
-                
+
                 for k in sanitized.keys():
                     if k.startswith("oauth_"):
                         sanitized.pop(k)
-                        
+
                 setattr(request, method_type, sanitized)
 
         return request
-    
+
     def post_process(self, data):
         """
         Allow any derived classes to mangle the result after it has been generated.
@@ -211,9 +211,9 @@ class Resource(object):
         or signing requests.
         """
         return data
-    
-    # -- 
-    
+
+    # --
+
     def email_exception(self, reporter):
         subject = "Piston crash report"
         html = reporter.get_traceback_html()
@@ -221,6 +221,6 @@ class Resource(object):
         message = EmailMessage(settings.EMAIL_SUBJECT_PREFIX+subject,
                                 html, settings.SERVER_EMAIL,
                                 [ admin[1] for admin in settings.ADMINS ])
-        
+
         message.content_subtype = 'html'
         message.send(fail_silently=True)
