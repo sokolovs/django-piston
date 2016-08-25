@@ -123,27 +123,28 @@ class HandlerDocumentation(object):
         
         try:
             resource_uri = self.handler.resource_uri()
-            
             components = [None, [], {}]
 
             for i, value in enumerate(resource_uri):
                 components[i] = value
-        
+
             lookup_view, args, kwargs = components
             lookup_view = get_callable(lookup_view, True)
 
             possibilities = get_resolver(None).reverse_dict.getlist(lookup_view)
-            
-            for possibility, pattern in possibilities:
-                for result, params in possibility:
-                    if args:
-                        if len(args) != len(params):
-                            continue
-                        return _convert(result, params)
-                    else:
-                        if set(kwargs.keys()) != set(params):
-                            continue
-                        return _convert(result, params)
+            print possibilities
+            for possibility in possibilities:
+                uri_ptrn, pcre_ptrn, ptrn_kwargs = possibility
+                result, params = uri_ptrn[0]
+                
+                if args:
+                    if len(args) != len(params):
+                        continue
+                    return _convert(result, params)
+                else:
+                    if set(kwargs.keys()) != set(params):
+                        continue
+                    return _convert(result, params)
         except:
             return None
         
