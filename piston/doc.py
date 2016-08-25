@@ -132,7 +132,6 @@ class HandlerDocumentation(object):
             lookup_view = get_callable(lookup_view, True)
 
             possibilities = get_resolver(None).reverse_dict.getlist(lookup_view)
-            print possibilities
             for possibility in possibilities:
                 uri_ptrn, pcre_ptrn, ptrn_kwargs = possibility
                 result, params = uri_ptrn[0]
