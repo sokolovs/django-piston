@@ -1,5 +1,6 @@
 from __future__ import generators
 
+import datetime
 import decimal, re, inspect
 
 try:
@@ -23,7 +24,7 @@ from django.db.models.query import QuerySet
 from django.db.models import Model, permalink
 from django.utils.xmlutils import SimplerXMLGenerator
 from django.utils.encoding import smart_unicode
-from django.core.serializers.json import DateTimeAwareJSONEncoder
+from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
 from django.core import serializers
 
@@ -39,11 +40,22 @@ try:
 except ImportError:
     import pickle
 
-
 try:
     import json
 except ImportError:
     from django.utils import simplejson as json
+
+class DateTimeEncoder(DjangoJSONEncoder):
+    """
+    DjangoJSONEncoder subclass for old style datetime formating.
+    """
+    def default(self, o):
+        # See "Date Time String Format" in the ISO specification.
+        if isinstance(o, datetime.datetime):
+            r = o.strftime("%Y-%m-%d %H:%M")
+            return r
+        else:
+            return super(DateTimeEncoder, self).default(o)
 
 class Emitter(object):
     """
@@ -372,7 +384,7 @@ class JSONEmitter(Emitter):
     """
     def render(self, request, post_processor=None):
         cb = request.GET.get('callback')
-        seria = json.dumps(self.construct(), cls=DateTimeAwareJSONEncoder, ensure_ascii=False, indent=4)
+        seria = json.dumps(self.construct(), cls=DateTimeEncoder, ensure_ascii=False, indent=4)
 
         # Callback
         if cb:
