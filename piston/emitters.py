@@ -52,7 +52,7 @@ class DateTimeEncoder(DjangoJSONEncoder):
     def default(self, o):
         # See "Date Time String Format" in the ISO specification.
         if isinstance(o, datetime.datetime):
-            r = o.strftime("%Y-%m-%d %H:%M")
+            r = o.strftime("%Y-%m-%d %H:%M:%S")
             return r
         else:
             return super(DateTimeEncoder, self).default(o)
