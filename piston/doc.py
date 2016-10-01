@@ -2,7 +2,7 @@ import inspect, handler
 
 from piston.handler import typemapper
 
-from django.core.urlresolvers import get_resolver, get_callable, get_script_prefix
+from django.core.urlresolvers import get_resolver, get_ns_resolver, get_callable, get_script_prefix
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 
