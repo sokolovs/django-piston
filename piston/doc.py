@@ -131,7 +131,19 @@ class HandlerDocumentation(object):
             lookup_view, args, kwargs = components
             lookup_view = get_callable(lookup_view, True)
 
-            possibilities = get_resolver(None).reverse_dict.getlist(lookup_view)
+            parts = lookup_view.split(':')
+            parts.reverse()
+            view = parts[0]
+            ns = None
+            if len(parts) > 1:
+                ns = parts[1]
+
+            resolver = get_resolver(None)
+            if ns is not None:
+                extra, resolver = resolver.namespace_dict[ns]
+                resolver = get_ns_resolver(extra, resolver)
+
+            possibilities = resolver.reverse_dict.getlist(view)
             for possibility in possibilities:
                 uri_ptrn, pcre_ptrn, ptrn_kwargs = possibility
                 result, params = uri_ptrn[0]
