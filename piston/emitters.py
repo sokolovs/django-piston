@@ -113,7 +113,7 @@ class Emitter(object):
             elif isinstance(thing, (tuple, list)):
                 ret = _list(thing)
             elif isinstance(thing, dict):
-                ret = _dict(thing)
+                ret = _dict(thing, fields=fields)
             elif isinstance(thing, decimal.Decimal):
                 ret = str(thing)
             elif isinstance(thing, Model):
@@ -284,17 +284,17 @@ class Emitter(object):
             """
             return [ _any(v, fields) for v in data ]
 
-        def _list(data):
+        def _list(data, fields=()):
             """
             Lists.
             """
-            return [ _any(v) for v in data ]
+            return [ _any(v, fields) for v in data ]
 
-        def _dict(data):
+        def _dict(data, fields=()):
             """
             Dictionaries.
             """
-            return dict([ (k, _any(v)) for k, v in data.iteritems() ])
+            return dict([ (k, _any(v, fields)) for k, v in data.iteritems() ])
 
         # Kickstart the seralizin'.
         return post_processor(_any(self.data, self.fields))
